@@ -1,3 +1,22 @@
+export default function numericalBackprop(lossFn, affects){
+    return (originalState, propsFromState) => {
+        var keys = Object.keys(originalState)
+                    .filter(key => typeof originalState[key] == 'number'
+                        && (!affects || affects === key || affects.includes(key))),
+            x0 = keys.map(key => originalState[key]),
+            hydrate = x => Object.assign({}, originalState, zipObject(keys, x));
+        var result = minimize(x => lossFn(propsFromState(hydrate(x))), x0)
+        return hydrate(result.solution)
+    }
+}
+
+
+function zipObject(keys, values){
+    var obj = {};
+    keys.forEach((key, i) => obj[key] = values[i]);
+    return obj;
+}
+
 
 function norm2(x){
     return Math.sqrt(x.reduce((a,b)=>a+b*b,0))
@@ -112,7 +131,7 @@ function gradient(f,x) {
     return grad;
 }
 
-export default function minimize(f, x0, end_on_line_search,tol=1e-8,maxit=1000) {
+function minimize(f, x0, end_on_line_search,tol=1e-8,maxit=1000) {
     tol = Math.max(tol,2e-16);
     var grad = a => gradient(f,a)
 

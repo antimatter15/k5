@@ -1,28 +1,20 @@
-import React from "react"
-import minimize from "./minimize.js"
-
-export class K5Primitive extends React.Component {
-    optimizeProps(propLoss){
-        // TODO: add support for "affects" whitelist
-        var chain = getInstanceAncestry(this._reactInternalInstance);
-        var root = chain[0]._instance;
-        root.optimizeState(state => propLoss(computePropsFromState(chain, state)))
+export function K5Primitive(BaseComponent){
+    return class K5Primitive extends BaseComponent {
+        optimizeProps(stateOptimizer){
+            var chain = getInstanceAncestry(this._reactInternalInstance);
+            var rootInstance = chain[0]._instance;
+            rootInstance.stateOptimized(
+                stateOptimizer(rootInstance.state, 
+                    state => computePropsFromState(chain, state)))
+        }
     }
 }
 
-export class K5Root extends React.Component {
-    optimizeState(loss){
-        var keys = Object.keys(this.state),
-            x0 = keys.map(key => this.state[key]);
-        var result = minimize(x => loss(zipObject(keys, x)), x0)
-        this.setState(zipObject(keys, result.solution))
+export function K5Root(BaseComponent){
+    return class K5Root extends BaseComponent {
+        // this serves as the callback for when the state has updated
+        stateOptimized(newState){ this.setState(newState) }
     }
-}
-
-function zipObject(keys, values){
-    var obj = {};
-    keys.forEach((key, i) => obj[key] = values[i]);
-    return obj;
 }
 
 function getInstanceAncestry(inst){
@@ -30,9 +22,9 @@ function getInstanceAncestry(inst){
     while(inst._currentElement._owner){
         inst = inst._currentElement._owner
         chain.unshift(inst)
-        if(inst._instance instanceof K5Root) return chain;
+        if(inst._instance.stateOptimized) return chain;
     }
-    throw new Error('K5Primitive must be a descendent of K5Root.')
+    throw new Error('K5Primitive must be a descendent of a component implementing method "stateOptimized(newState)".')
 }
 
 function computePropsFromState(chain, rootState){
