@@ -1,21 +1,33 @@
+import copyBackprop from "./copy.js"
+
+export function K5Root(BaseComponent){
+    return class K5Root extends BaseComponent {
+        stateOptimized(newState){ this.setState(newState) }
+    }
+}
+
+export function K5Intermediate(BaseComponent){
+    return class K5Intermediate extends K5Primitive(BaseComponent) {
+        stateOptimized(newState){
+            this.optimizeProps(copyBackprop(newState, props => props)) 
+        }
+        renderWithState(state){ return renderProxiedInstance(this, state) }
+        getState(){ return this.props }
+    }
+}
+
 export function K5Primitive(BaseComponent){
     return class K5Primitive extends BaseComponent {
         optimizeProps(stateOptimizer){
             var chain = getInstanceAncestry(this._reactInternalInstance);
             var rootInstance = chain[0]._instance;
             rootInstance.stateOptimized(
-                stateOptimizer(rootInstance.state, 
+                stateOptimizer(rootInstance.getState ? rootInstance.getState() : rootInstance.state, 
                     state => computePropsFromState(chain, state)))
         }
     }
 }
 
-export function K5Root(BaseComponent){
-    return class K5Root extends BaseComponent {
-        // this serves as the callback for when the state has updated
-        stateOptimized(newState){ this.setState(newState) }
-    }
-}
 
 function getInstanceAncestry(inst){
     var chain = [inst]
@@ -41,6 +53,7 @@ function computePropsFromState(chain, rootState){
 }
 
 function renderProxiedInstance(inst, props, state){
+    if(inst.renderWithState && !props) return inst.renderWithState(state);
     var proxiedInst = new Proxy(inst, {
         get(target, key){
             if(key === 'props' && props) return props;
@@ -53,18 +66,12 @@ function renderProxiedInstance(inst, props, state){
 
 function matchEquivalent(needle, haystack, yaystack){
     if(needle === haystack) return yaystack;
+    if(typeof haystack != 'object') return;
     if(Array.isArray(haystack)){
         // TODO: instead of looking up a match by index, do it by key
         for(var i = 0; i < haystack.length; i++){
             var haychild = haystack[i],
                 yaychild = yaystack[i],
-                match = matchEquivalent(needle, haychild, yaychild);
-            if(match) return match;
-        }
-    }else if(Array.isArray(haystack.props.children)){
-        for(var i = 0; i < haystack.props.children.length; i++){
-            var haychild = haystack.props.children[i],
-                yaychild = yaystack.props.children[i],
                 match = matchEquivalent(needle, haychild, yaychild);
             if(match) return match;
         }
