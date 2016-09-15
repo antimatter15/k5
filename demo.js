@@ -12,8 +12,8 @@ class App extends K5Root(React.Component) {
       super()
       this.state = { 
           index: 2, // tabs
-          delta: 33, shrink: 0.8, cactus: "#E09494", // fractal tree
-          squareness: 0.8, x1: 100, y1: 200, x2: 500, y2: 200, // dragon curve
+          tree: {delta: 33, shrink: 0.8, cactus: "#E09494"}, // fractal tree
+          dragon: {squareness: 0.8, x1: 100, y1: 200, x2: 500, y2: 200}, // dragon curve
           "spin": 0, "scale": 1, // warp drive
           hyperwarp: {"spin": 0, "scale": 1,},
           text: 'hello darkness my old friend',
@@ -30,10 +30,10 @@ class App extends K5Root(React.Component) {
           <Tab>Word Count</Tab>
         </TabList>
         <TabPanel>
-          <TreePane {...this.state} />
+          <HyperTreePane {...this.state.tree} />
         </TabPanel>
         <TabPanel>
-            <DragonPane {...this.state} />
+            <HyperDragonPane {...this.state.dragon} />
         </TabPanel>
         <TabPanel>
             <WarpDrive {...this.state} />
@@ -112,6 +112,11 @@ class WarpedPoint extends React.PureComponent {
     }
 }
 
+class HyperDragonPane extends K5Intermediate(React.Component) {
+    render(){
+        return <DragonPane {...this.props} />
+    }
+}
 
 function DragonPane(props){
     return <div>
@@ -131,8 +136,8 @@ function DragonPane(props){
 function DraggableDragon({x1, y1, x2, y2, level, squareness}){
     return <g>
         <Dragon x1={x1} y1={y1} x2={x2} y2={y2} level={level} dir={-1} squareness={squareness} />
-        <DraggableCircle cx={x1} cy={y1} r={10} />
-        <DraggableCircle cx={x2} cy={y2} r={10} />
+        <DraggableCircle cx={x1} cy={y1} r={10} affects={"x1"} />
+        <DraggableCircle cx={x2} cy={y2} r={10} affects={"y2"} />
     </g>
 }
 
@@ -153,6 +158,11 @@ class Dragon extends React.PureComponent {
 }
 
 
+class HyperTreePane extends K5Intermediate(React.Component) {
+    render(){
+        return <TreePane {...this.props} />
+    }
+}
 
 function TreePane(props){
     return <div>

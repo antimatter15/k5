@@ -1,14 +1,64 @@
+
+
+
 export default function numericalBackprop(lossFn, affects){
     return (originalState, propsFromState) => {
-        var keys = Object.keys(originalState)
-                    .filter(key => typeof originalState[key] == 'number'
-                        && (!affects || affects === key || affects.includes(key))),
-            x0 = keys.map(key => originalState[key]),
-            hydrate = x => Object.assign({}, originalState, zipObject(keys, x));
+        var skip = (obj, path) => false,
+            x0 = funfreeze(originalState, null, skip),
+            hydrate = x => funfreeze(originalState, x, skip);
+
         var result = minimize(x => lossFn(propsFromState(hydrate(x))), x0)
         return hydrate(result.solution)
     }
 }
+
+
+// export default function numericalBackprop(lossFn, affects){
+//     return (originalState, propsFromState) => {
+//         var keys = Object.keys(originalState)
+//                     .filter(key => typeof originalState[key] == 'number'
+//                         && (!affects || affects === key || affects.includes(key))),
+//             x0 = keys.map(key => originalState[key]),
+//             hydrate = x => Object.assign({}, originalState, zipObject(keys, x));
+//         var result = minimize(x => lossFn(propsFromState(hydrate(x))), x0)
+//         return hydrate(result.solution)
+//     }
+// }
+
+function funfreeze(base, invec, skipfn){
+    var vec = []
+    if(invec) vec = invec.slice(0);
+
+    function traverse(obj, path){
+        if(skipfn && skipfn(obj, path)) return obj;
+        if(obj && typeof obj === 'object'){
+            var new_obj = {}
+            for(var key in obj){
+                new_obj[key] = traverse(obj[key], path.concat([key]))
+            }
+            return new_obj
+        }else if(typeof obj === 'number'){
+            // pop something from the vec, or add something to it
+            // return obj;
+            
+            if(invec){
+                return vec.shift();
+            }else{
+                vec.push(obj)    
+            }
+        }else{
+            return obj;
+        }
+    }
+
+    if(invec){
+        return traverse(base, [])
+    }else{
+        traverse(base, [])
+        return vec;
+    }
+}
+
 
 
 function zipObject(keys, values){
